@@ -5,21 +5,23 @@ import torch.nn.functional as F
 import math
 
 
+
 def create_kqv_matrix(input_vector_dim, n_heads = 1):
     # we merge the three matrix/vectors k, q, v to single matrix.
-    return nn.Linear(input_vector_dim, 3 * input_vector_dim) # TODO fill in the correct dimensions
+    head_dim = input_vector_dim // n_heads
+    return nn.Linear(input_vector_dim, 3 * head_dim)
 
 def kqv(x, linear):
-    raise Exception("Not implemented.")
     B, N, D = x.size()
     # TODO compute k, q, and v
     # (can do it in 1 or 2 lines.)
     # create the a common layer
     kqv_matrix = linear(x)
-    # split it by dimentions
-    k, q, v = kqv_matrix.split(D, dim=2)
-
+    # split it by dimensions
+    k, q, v = torch.chunk(kqv_matrix, 3, dim=2)
     return k, q, v
+
+
 def attention_scores(a, b):
     B1, N1, D1 = a.size()
     B2, N2, D2 = b.size()
@@ -31,6 +33,7 @@ def attention_scores(a, b):
     A = torch.matmul(b, a.transpose(1, 2)) / math.sqrt(D1)
     return A
 
+
 def create_causal_mask(embed_dim, n_heads, max_context_len):
     # Return a causal mask (a tensor) with zeroes in dimensions we want to zero out.
     # This function receives more arguments than it actually needs. This is just because
@@ -40,6 +43,7 @@ def create_causal_mask(embed_dim, n_heads, max_context_len):
     mask = torch.tril(torch.ones(max_context_len, max_context_len))
     mask = mask.unsqueeze(0) # TODO replace this line with the creation of a causal mask.
     return mask
+
 
 def self_attention(v, A, mask = None):
     # TODO compute sa (corresponding to y in the assignemnt text).
@@ -62,6 +66,7 @@ def self_attention_layer(x, kqv_matrix, attention_mask):
     att = attention_scores(k, q)
     sa = self_attention(v, att, attention_mask)
     return sa
+
 
 def multi_head_attention_layer(x, kqv_matrices, mask):
     B, N, D = x.size()
