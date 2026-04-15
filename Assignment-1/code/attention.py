@@ -6,20 +6,22 @@ import math
 
 
 def create_kqv_matrix(input_vector_dim, n_heads = 1):
-    # we merge the three matrix/vectors k, q, v to single matrix.
-    return nn.Linear(input_vector_dim, 3 * input_vector_dim) # TODO fill in the correct dimensions
+    d = input_vector_dim // n_heads # dimension of each head
+
+    # we can compute k, q and v with a single linear layer,
+    # by making the output dimension 3 times the input dimension. 
+    # The first d dimensions of the output will be k, the next d will be q, and the last d will be v.
+    return nn.Linear(input_vector_dim, d * 3, bias=False) 
 
 def kqv(x, linear):
+    raise Exception("Not implemented.")
     B, N, D = x.size()
     # TODO compute k, q, and v
     # (can do it in 1 or 2 lines.)
-    # create the a common layer
-    kqv_matrix = linear(x)
-    # split it by dimentions
-    k, q, v = kqv_matrix.split(D, dim=2)
+    combined = linear(x) #moving x through the linear layer, shape: (B, N, 3d) 
+    k, q, v = torch.split(combined, combined.shape[-1] // 3, dim=-1) #make the 3 matrices each of shape (B, N, d)
 
     return k, q, v
-
 def attention_scores(a, b):
     B1, N1, D1 = a.size()
     B2, N2, D2 = b.size()
