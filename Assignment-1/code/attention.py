@@ -7,7 +7,8 @@ import math
 
 def create_kqv_matrix(input_vector_dim, n_heads = 1):
     # we merge the three matrix/vectors k, q, v to single matrix.
-    return nn.Linear(input_vector_dim, 3 * input_vector_dim) # TODO fill in the correct dimensions
+    head_dim = input_vector_dim // n_heads
+    return nn.Linear(input_vector_dim, 3 * head_dim) # TODO fill in the correct dimensions
 
 def kqv(x, linear):
     B, N, D = x.size()
@@ -16,8 +17,7 @@ def kqv(x, linear):
     # create the a common layer
     kqv_matrix = linear(x)
     # split it by dimentions
-    k, q, v = kqv_matrix.split(D, dim=2)
-
+    k, q, v = torch.chunk(kqv_matrix, 3, dim=2)
     return k, q, v
 
 def attention_scores(a, b):
