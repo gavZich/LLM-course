@@ -17,6 +17,9 @@ class TransformerDecoderBlock(nn.Module):
         if self.with_residuals:
             raise Exception("Not implemented")
             # TODO add residuals support.
+            x = inputs + self.causal_attention(self.layer_norm_1(inputs)) 
+            x = x + self.mlp(self.layer_norm_2(x))
+            return x
         else:
             x = inputs
             x = self.layer_norm_1(x)
@@ -28,8 +31,8 @@ class TransformerDecoderBlock(nn.Module):
 class Embed(nn.Module):
     def __init__(self, vocab_size: int, embed_size: int, max_context_len):
         super().__init__()
-        self.token_embeddings = nn.Embedding(0, 0) # TODO set the right values
-        self.position_embeddings = nn.Embedding(0, 0) # TODO set the right values
+        self.token_embeddings = nn.Embedding(vocab_size, embed_size)
+        self.position_embeddings = nn.Embedding(max_context_len, embed_size)
         self.max_context_len = max_context_len
 
     def forward(self, x):
@@ -39,6 +42,12 @@ class Embed(nn.Module):
         # The output should be of shape (b x n x d), where d is the embedding dimension.
         #tok_embeddings = 
         #pos_embeddings = ...
+        b, n = x.size()
+        tok_embeddings = self.token_embeddings(x)
+        device = x.device
+        pos_indices = torch.arange(n, device=device) 
+        pos_embeddings = self.position_embeddings(pos_indices) 
+
         return tok_embeddings + pos_embeddings
 
 
@@ -74,22 +83,16 @@ class TransformerLM(nn.Module):
         return logits
 
     def init_weights(self):
-        # initialize weights
-        # TODO implement initialization logic for embeddings and linear layers.
-        # The code break down the parameters by type (layer-norm, linear, embedding),
-        # but can also condition on individual names, for example by checking pn.endswith(...).
         for pn, p in self.named_parameters():
             if isinstance(p, nn.LayerNorm):
                 torch.nn.init.zeros_(p.bias)
                 torch.nn.init.ones_(p.weight)
             elif isinstance(p, nn.Linear):
-                # TODO initialize p.weight and p.bias (if it is not None).
-                # You can look at initializers in torch.nn.init
-                pass
+                torch.nn.init.normal_(p.weight, mean=0.0, std=0.02)
+                if p.bias is not None:
+                    torch.nn.init.zeros_(p.bias)
             elif isinstance(p, nn.Embedding):
-                # TODO initialize p.weight and p.bias (if it is not None).
-                # You can look at initializers in torch.nn.init
-                pass
+                torch.nn.init.normal_(p.weight, mean=0.0, std=0.02)
 
 
     def sample_continuation(self, prefix: list[int], max_tokens_to_generate: int) -> list[int]:
