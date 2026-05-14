@@ -5,19 +5,25 @@ import attention
 import mlp
 
 class TransformerDecoderBlock(nn.Module):
-    def __init__(self, n_heads: int, embed_size: int, mlp_hidden_size: int, max_context_len, with_residuals: bool = False):
+    def __init__(self, n_heads: int, embed_size: int, mlp_hidden_size: int, max_context_len, with_residuals: bool = False, pre_norm: bool = True):
         super().__init__()
         self.causal_attention = attention.CausalSelfAttention(embed_size, n_heads, max_context_len)
         self.mlp = mlp.MLP(embed_size, mlp_hidden_size)
         self.layer_norm_1 = nn.LayerNorm(embed_size)
         self.layer_norm_2 = nn.LayerNorm(embed_size)
         self.with_residuals = with_residuals
+        self.pre_norm = pre_norm
 
     def forward(self, inputs):
         if self.with_residuals:
-            # TODO add residuals support.
-            x = inputs + self.causal_attention(self.layer_norm_1(inputs)) 
-            x = x + self.mlp(self.layer_norm_2(x))
+            if self.pre_norm:
+                # Pre-norm: LayerNorm before each sub-layer
+                x = inputs + self.causal_attention(self.layer_norm_1(inputs))
+                x = x + self.mlp(self.layer_norm_2(x))
+            else:
+                # Post-norm: LayerNorm after each sub-layer
+                x = self.layer_norm_1(inputs + self.causal_attention(inputs))
+                x = self.layer_norm_2(x + self.mlp(x))
             return x
         else:
             x = inputs
@@ -59,10 +65,11 @@ class TransformerLM(nn.Module):
             vocab_size: int,
             mlp_hidden_size: int,
             with_residuals: bool,
+            pre_norm: bool = True,
             ):
         super().__init__()
         self.embed = Embed(vocab_size, embed_size, max_context_len)
-        self.layers = nn.ModuleList([TransformerDecoderBlock(n_heads, embed_size, mlp_hidden_size, max_context_len, with_residuals) for _ in range(n_layers)])
+        self.layers = nn.ModuleList([TransformerDecoderBlock(n_heads, embed_size, mlp_hidden_size, max_context_len, with_residuals, pre_norm) for _ in range(n_layers)])
         self.layer_norm = nn.LayerNorm(embed_size)
         self.word_prediction = nn.Linear(embed_size, vocab_size)
         self.max_context_len = max_context_len
@@ -81,16 +88,16 @@ class TransformerLM(nn.Module):
         return logits
 
     def init_weights(self):
-        for pn, p in self.named_parameters():
-            if isinstance(p, nn.LayerNorm):
-                torch.nn.init.zeros_(p.bias)
-                torch.nn.init.ones_(p.weight)
-            elif isinstance(p, nn.Linear):
-                torch.nn.init.normal_(p.weight, mean=0.0, std=0.02)
-                if p.bias is not None:
-                    torch.nn.init.zeros_(p.bias)
-            elif isinstance(p, nn.Embedding):
-                torch.nn.init.normal_(p.weight, mean=0.0, std=0.02)
+        for name, module in self.named_modules():
+            if isinstance(module, nn.LayerNorm):
+                torch.nn.init.zeros_(module.bias)
+                torch.nn.init.ones_(module.weight)
+            elif isinstance(module, nn.Linear):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+                if module.bias is not None:
+                    torch.nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.Embedding):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
 
     def sample_continuation(self, prefix: list[int], max_tokens_to_generate: int) -> list[int]:

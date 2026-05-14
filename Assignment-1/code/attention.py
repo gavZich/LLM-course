@@ -102,7 +102,10 @@ class CausalSelfAttention(nn.Module):
         self.register_buffer("mask", mask)
         self.n_heads = n_heads
         self.embed_dim = embed_dim
+        # Final projection: mix the concatenated head outputs
+        self.output_proj = nn.Linear(embed_dim, embed_dim)
 
     def forward(self, x):
         sa = multi_head_attention_layer(x, self.kqv_matrices, self.mask)
+        sa = self.output_proj(sa)
         return sa
