@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     seq_len = 128
     batch_size = 64
-    data_path = "../data/en/"
+    data_path = "/content/drive/MyDrive/LM Course/Assignment1/en"
     n_layers = 6
     n_heads = 6
     embed_size = 192
@@ -20,6 +20,7 @@ if __name__ == "__main__":
 
     learning_rate = 5e-4
     gradient_clipping = 1.0
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     num_batches_to_train = 50000
 
@@ -36,7 +37,7 @@ if __name__ == "__main__":
         tokenizer.vocab_size(),
         mlp_hidden_size,
         with_residuals=True,
-    )
+    ).to(device)
 
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=[0.9, 0.95])
 
@@ -47,7 +48,8 @@ if __name__ == "__main__":
         for batch in data.batch_items(data_iter, batch_size):
             if num_batches >= num_batches_to_train:
                 break
-            num_batches = num_batches + 1
+
+            batch = batch.to(device)
 
             batch_x, batch_y = lm.batch_to_labeled_samples(batch)
 
