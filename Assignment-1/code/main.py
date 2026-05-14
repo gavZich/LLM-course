@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     seq_len = 128
     batch_size = 64
-    data_path = "/content/drive/MyDrive/LM Course/Assignment1/en"
+    data_path = "/content/drive/MyDrive/LM Course/Assignment-1/data/en"
     n_layers = 6
     n_heads = 6
     embed_size = 192
