@@ -246,7 +246,7 @@ if __name__ == "__main__":
     model, tokenizer, checkpoint = load_model_and_tokenizer()
 
     # You can change this text later.
-    sample_text = "ROMEO:\nHow well my counsel!\nBUCKINGHAM:\nGod and your own safety"
+    sample_text = "To be, or not to be, that is the question."
 
     token_ids, text, attentions = collect_attention(model, tokenizer, sample_text)
     chars = list(text)
